@@ -1,27 +1,43 @@
-name: Build and deploy Jekyll site to GitHub Pages
+name: Build and deploy Jekyll 4.x site to GitHub Pages
 
 on:
   push:
     branches:
       - main  # or master, depending on your default branch name
+  workflow_dispatch:  # Allows manual triggering from the GitHub UI
 
 jobs:
-  github-pages:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for .git metadata
+
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.3.4'
-          bundler-cache: true
+          ruby-version: '3.3.4'  # Matches your local Ruby version
+          bundler-cache: true    # Uses caching for faster setup
+
+      - name: Install dependencies
+        run: |
+          bundle install
           
-      - name: Build and Deploy
-        uses: jeffreytse/jekyll-deploy-action@v0.5.0
+      - name: Build the site
+        run: |
+          bundle exec jekyll build
+        env:
+          JEKYLL_ENV: production
+          
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
         with:
-          provider: 'github'
-          token: ${{ secrets.GITHUB_TOKEN }}
-          branch: 'gh-pages'
-          jekyll_src: './'
-          jekyll_cfg: '_config.yml'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./_site       # Jekyll's default output directory
+          publish_branch: gh-pages   # Branch to deploy to
+          full_commit_message: ${{ github.event.head_commit.message }}
+          force_orphan: true         # Make the gh-pages branch a single commit with only the built files
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
